@@ -1,11 +1,9 @@
-#!/usr/bin/env node
-// src/index.ts
-
 import fs from "fs";
 import path from "path";
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 import glob from "glob";
+import chokidar from "chokidar";
 
 function generateRobotsTxt(publicPath: string, siteUrl: string): void {
   const robotsTxt = `User-agent: *
@@ -41,30 +39,38 @@ function generateSitemapXml(
 
 function getRoutesFromProject(projectPath: string): string[] {
   const routes = new Set<string>();
+  routes.add("/");
 
   const files = glob.sync("**/*.{js,jsx,ts,tsx}", { cwd: projectPath });
 
   files.forEach((file) => {
     const filePath = path.join(projectPath, file);
     const content = fs.readFileSync(filePath, "utf-8");
-    const ast = parse(content, {
-      sourceType: "module",
-      plugins: ["jsx", "typescript"],
-    });
+    try {
+      const ast = parse(content, {
+        sourceType: "module",
+        plugins: ["jsx", "typescript"],
+      });
 
-    traverse(ast, {
-      StringLiteral(path) {
-        if (path.node.value.startsWith("/") && !path.node.value.includes("*")) {
-          routes.add(path.node.value);
-        }
-      },
-      TemplateLiteral(path) {
-        const value = path.get("quasis")[0].node.value.raw;
-        if (value.startsWith("/") && !value.includes("*")) {
-          routes.add(value);
-        }
-      },
-    });
+      traverse(ast, {
+        StringLiteral(path) {
+          if (
+            path.node.value.startsWith("/") &&
+            !path.node.value.includes("*")
+          ) {
+            routes.add(path.node.value);
+          }
+        },
+        TemplateLiteral(path) {
+          const value = path.get("quasis")[0].node.value.raw;
+          if (value.startsWith("/") && !value.includes("*")) {
+            routes.add(value);
+          }
+        },
+      });
+    } catch (error) {
+      console.warn(`Error parsing file ${file}: ${(error as Error).message}`);
+    }
   });
 
   return Array.from(routes);
@@ -77,8 +83,8 @@ function watchProjectAndGenerate(
 ) {
   console.log(`Watching for changes in ${projectPath}...`);
 
-  const watcher = require("chokidar").watch(projectPath, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+  const watcher = chokidar.watch(projectPath, {
+    ignored: /(^|[\/\\])\../,
     persistent: true,
   });
 

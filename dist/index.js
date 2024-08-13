@@ -1,6 +1,4 @@
-#!/usr/bin/env node
 "use strict";
-// src/index.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -10,6 +8,7 @@ const path_1 = __importDefault(require("path"));
 const parser_1 = require("@babel/parser");
 const traverse_1 = __importDefault(require("@babel/traverse"));
 const glob_1 = __importDefault(require("glob"));
+const chokidar_1 = __importDefault(require("chokidar"));
 function generateRobotsTxt(publicPath, siteUrl) {
     const robotsTxt = `User-agent: *
 Allow: /
@@ -34,33 +33,40 @@ function generateSitemapXml(publicPath, siteUrl, routes) {
 }
 function getRoutesFromProject(projectPath) {
     const routes = new Set();
+    routes.add("/");
     const files = glob_1.default.sync("**/*.{js,jsx,ts,tsx}", { cwd: projectPath });
     files.forEach((file) => {
         const filePath = path_1.default.join(projectPath, file);
         const content = fs_1.default.readFileSync(filePath, "utf-8");
-        const ast = (0, parser_1.parse)(content, {
-            sourceType: "module",
-            plugins: ["jsx", "typescript"],
-        });
-        (0, traverse_1.default)(ast, {
-            StringLiteral(path) {
-                if (path.node.value.startsWith("/") && !path.node.value.includes("*")) {
-                    routes.add(path.node.value);
-                }
-            },
-            TemplateLiteral(path) {
-                const value = path.get("quasis")[0].node.value.raw;
-                if (value.startsWith("/") && !value.includes("*")) {
-                    routes.add(value);
-                }
-            },
-        });
+        try {
+            const ast = (0, parser_1.parse)(content, {
+                sourceType: "module",
+                plugins: ["jsx", "typescript"],
+            });
+            (0, traverse_1.default)(ast, {
+                StringLiteral(path) {
+                    if (path.node.value.startsWith("/") &&
+                        !path.node.value.includes("*")) {
+                        routes.add(path.node.value);
+                    }
+                },
+                TemplateLiteral(path) {
+                    const value = path.get("quasis")[0].node.value.raw;
+                    if (value.startsWith("/") && !value.includes("*")) {
+                        routes.add(value);
+                    }
+                },
+            });
+        }
+        catch (error) {
+            console.warn(`Error parsing file ${file}: ${error.message}`);
+        }
     });
     return Array.from(routes);
 }
 function watchProjectAndGenerate(siteUrl, projectPath, publicPath) {
     console.log(`Watching for changes in ${projectPath}...`);
-    const watcher = require("chokidar").watch(projectPath, {
+    const watcher = chokidar_1.default.watch(projectPath, {
         ignored: /(^|[\/\\])\../,
         persistent: true,
     });
