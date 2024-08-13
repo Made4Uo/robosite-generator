@@ -1,6 +1,6 @@
 {
   "name": "react-robosite-generator",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A CLI tool to generate robots.txt and sitemap.xml for React projects by scanning for routes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
