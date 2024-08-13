@@ -1,8 +1,9 @@
 {
   "name": "react-robosite-generator",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A CLI tool to generate robots.txt and sitemap.xml for React projects by scanning for routes",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "react-robosite-generator": "./dist/index.js"
   },
@@ -10,6 +11,9 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "react",
     "sitemap",
@@ -32,11 +36,11 @@
   "homepage": "https://github.com/Made4Uo/react-robosite-generator#readme",
   "dependencies": {
     "chokidar": "^3.5.1",
-    "glob": "^7.1.7"
+    "glob": "^7.1.7",
+    "@babel/parser": "^7.14.0",
+    "@babel/traverse": "^7.14.0"
   },
   "devDependencies": {
-    "@babel/parser": "^7.14.0",
-    "@babel/traverse": "^7.14.0",
     "@types/babel__traverse": "^7.11.1",
     "@types/glob": "^7.2.0",
     "@types/node": "^14.14.31",
