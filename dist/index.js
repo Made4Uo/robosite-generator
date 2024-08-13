@@ -12,9 +12,43 @@ const glob_1 = __importDefault(require("glob"));
 const chokidar_1 = __importDefault(require("chokidar"));
 function generateRobotsTxt(publicPath, siteUrl) {
     console.log("Generating robots.txt...");
-    const robotsTxt = `User-agent: *
+    const robotsTxt = `# robots.txt for ${new URL(siteUrl).hostname}
+# Block known scrapers and bots
+User-agent: AhrefsBot
+Disallow: /
+User-agent: MJ12bot
+Disallow: /
+User-agent: SEMrushBot
+Disallow: /
+User-agent: Baiduspider
+Disallow: /
+User-agent: YandexBot
+Disallow: /
+User-agent: BLEXBot
+Disallow: /
+User-agent: dotbot
+Disallow: /
+
+# Block specific directories and files for all user agents
+User-agent: *
+Disallow: /private/
+Disallow: /temp/
+Disallow: /noindex/
+
+# Allow crawling of all other content
 Allow: /
 
+# Allow all pages for Googlebot, Bingbot, and other legitimate search engines
+User-agent: Googlebot
+Disallow:
+User-agent: Bingbot
+Disallow:
+
+# Block all other bots by default
+User-agent: *
+Disallow: /
+
+# Sitemap location
 Sitemap: ${siteUrl}/sitemap.xml`;
     fs_1.default.writeFileSync(path_1.default.join(publicPath, "robots.txt"), robotsTxt);
     console.log("robots.txt generated successfully");
@@ -37,7 +71,7 @@ function generateSitemapXml(publicPath, siteUrl, routes) {
 function getRoutesFromProject(projectPath) {
     console.log("Scanning project for routes...");
     const routes = new Set();
-    routes.add("/");
+    routes.add("/"); // Always include the root route
     const files = glob_1.default.sync("**/*.{js,jsx,ts,tsx}", { cwd: projectPath });
     console.log(`Found ${files.length} files to scan`);
     let scannedFiles = 0;
@@ -53,13 +87,13 @@ function getRoutesFromProject(projectPath) {
                 StringLiteral(path) {
                     if (path.node.value.startsWith("/") &&
                         !path.node.value.includes("*")) {
-                        routes.add(path.node.value);
+                        addRouteIfValid(routes, path.node.value);
                     }
                 },
                 TemplateLiteral(path) {
                     const value = path.get("quasis")[0].node.value.raw;
                     if (value.startsWith("/") && !value.includes("*")) {
-                        routes.add(value);
+                        addRouteIfValid(routes, value);
                     }
                 },
             });
@@ -74,6 +108,36 @@ function getRoutesFromProject(projectPath) {
     });
     console.log(`Scanning complete. Found ${routes.size} unique routes.`);
     return Array.from(routes);
+}
+function addRouteIfValid(routes, route) {
+    const excludedExtensions = [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".css",
+        ".scss",
+        ".less",
+    ];
+    const excludedDirectories = [
+        "/images/",
+        "/img/",
+        "/assets/",
+        "/sounds/",
+        "/audio/",
+        "/styles/",
+        "/style/",
+        "/css/",
+    ];
+    const isExcludedExtension = excludedExtensions.some((ext) => route.endsWith(ext));
+    const isExcludedDirectory = excludedDirectories.some((dir) => route.includes(dir));
+    if (!isExcludedExtension && !isExcludedDirectory) {
+        routes.add(route);
+    }
 }
 function watchProjectAndGenerate(siteUrl, projectPath, publicPath) {
     console.log(`Starting watch mode. Watching for changes in ${projectPath}...`);
