@@ -6,6 +6,7 @@ import glob from "glob";
 import chokidar from "chokidar";
 
 function generateRobotsTxt(publicPath: string, siteUrl: string): void {
+  console.log("Generating robots.txt...");
   const robotsTxt = `User-agent: *
 Allow: /
 
@@ -20,6 +21,7 @@ function generateSitemapXml(
   siteUrl: string,
   routes: string[]
 ): void {
+  console.log("Generating sitemap.xml...");
   const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   ${routes
@@ -38,11 +40,14 @@ function generateSitemapXml(
 }
 
 function getRoutesFromProject(projectPath: string): string[] {
+  console.log("Scanning project for routes...");
   const routes = new Set<string>();
   routes.add("/");
 
   const files = glob.sync("**/*.{js,jsx,ts,tsx}", { cwd: projectPath });
+  console.log(`Found ${files.length} files to scan`);
 
+  let scannedFiles = 0;
   files.forEach((file) => {
     const filePath = path.join(projectPath, file);
     const content = fs.readFileSync(filePath, "utf-8");
@@ -71,8 +76,13 @@ function getRoutesFromProject(projectPath: string): string[] {
     } catch (error) {
       console.warn(`Error parsing file ${file}: ${(error as Error).message}`);
     }
+    scannedFiles++;
+    if (scannedFiles % 10 === 0) {
+      console.log(`Scanned ${scannedFiles} files...`);
+    }
   });
 
+  console.log(`Scanning complete. Found ${routes.size} unique routes.`);
   return Array.from(routes);
 }
 
@@ -81,30 +91,41 @@ function watchProjectAndGenerate(
   projectPath: string,
   publicPath: string
 ) {
-  console.log(`Watching for changes in ${projectPath}...`);
+  console.log(`Starting watch mode. Watching for changes in ${projectPath}...`);
 
   const watcher = chokidar.watch(projectPath, {
-    ignored: /(^|[\/\\])\../,
+    ignored: /(^|[\/\\])\../, // ignore dotfiles
     persistent: true,
   });
 
   const generateFiles = () => {
+    console.log("Changes detected. Regenerating files...");
     const routes = getRoutesFromProject(projectPath);
     generateRobotsTxt(publicPath, siteUrl);
     generateSitemapXml(publicPath, siteUrl, routes);
-    console.log("Files regenerated due to project changes.");
+    console.log("File regeneration complete.");
   };
 
   watcher
-    .on("add", generateFiles)
-    .on("change", generateFiles)
-    .on("unlink", generateFiles);
+    .on("add", (path) => {
+      console.log(`File ${path} has been added`);
+      generateFiles();
+    })
+    .on("change", (path) => {
+      console.log(`File ${path} has been changed`);
+      generateFiles();
+    })
+    .on("unlink", (path) => {
+      console.log(`File ${path} has been removed`);
+      generateFiles();
+    });
 
-  console.log("Initial generation...");
+  console.log("Performing initial generation...");
   generateFiles();
 }
 
 function main() {
+  console.log("React Robosite Generator starting...");
   const args = process.argv.slice(2);
   if (args.length < 3 || args.length > 4) {
     console.error(
@@ -116,16 +137,23 @@ function main() {
   const [siteUrl, projectPath, publicPath] = args.slice(0, 3);
   const watchMode = args[3] === "--watch";
 
+  console.log(`Site URL: ${siteUrl}`);
+  console.log(`Project path: ${projectPath}`);
+  console.log(`Public path: ${publicPath}`);
+
   if (!fs.existsSync(publicPath)) {
+    console.log(`Public directory does not exist. Creating ${publicPath}...`);
     fs.mkdirSync(publicPath, { recursive: true });
   }
 
   if (watchMode) {
     watchProjectAndGenerate(siteUrl, projectPath, publicPath);
   } else {
+    console.log("Running in single generation mode...");
     const routes = getRoutesFromProject(projectPath);
     generateRobotsTxt(publicPath, siteUrl);
     generateSitemapXml(publicPath, siteUrl, routes);
+    console.log("Generation complete. Exiting...");
   }
 }
 
