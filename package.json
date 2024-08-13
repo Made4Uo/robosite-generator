@@ -24,12 +24,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/react-robosite-generator.git"
+    "url": "https://github.com/Made4Uo/react-robosite-generator.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/react-robosite-generator/issues"
+    "url": "https://github.com/Made4Uo/react-robosite-generator/issues"
   },
-  "homepage": "https://github.com/yourusername/react-robosite-generator#readme",
+  "homepage": "https://github.com/Made4Uo/react-robosite-generator#readme",
   "dependencies": {
     "chokidar": "^3.5.1",
     "glob": "^7.1.7"
